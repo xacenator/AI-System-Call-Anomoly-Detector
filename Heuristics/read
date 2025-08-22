@@ -1,0 +1,39 @@
+# reader_subprocess.py
+import json, subprocess, sys, signal
+
+EXE = "syscall.exe"  # path to your built exe
+
+def main():
+    # Start the collector (no extra window, text mode, UTF-8)
+    proc = subprocess.Popen(
+        [EXE],
+        stdout=subprocess.PIPE,
+        stderr=subprocess.STDOUT,
+        text=True,              # decode to str
+        encoding="utf-8",
+        bufsize=1,              # line-buffered
+        creationflags=0x08000000  # CREATE_NO_WINDOW (optional)
+    )
+
+    def stop(_sig, _frm):
+        try: proc.terminate()
+        except Exception: pass
+    signal.signal(signal.SIGINT, stop)
+    signal.signal(signal.SIGTERM, stop)
+
+    for line in proc.stdout:
+        line = line.strip()
+        if not line:
+            continue
+        try:
+            evt = json.loads(line)   # ← your event dict
+            # ---- do something with evt ----
+            print(evt)               # demo
+        except json.JSONDecodeError:
+            # If a partial line ever slips through, you can log it:
+            print("bad json:", line[:200], file=sys.stderr)
+
+    proc.wait()
+
+if __name__ == "__main__":
+    main()
